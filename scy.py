@@ -2,11 +2,15 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, StaleElementReferenceException
+
 import time
+import csv
 import os
-import traceback
+import getpass
 import pyautogui
-import datetime
 
 def setup_driver():
     """Setup WebDriver dengan konfigurasi yang tepat"""
@@ -18,357 +22,307 @@ def setup_driver():
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
     
     # Tetapkan preferensi download
-    download_dir = os.path.abspath("./downloads")
-    os.makedirs(download_dir, exist_ok=True)
-    
     prefs = {
-        "download.default_directory": download_dir,
+        "download.default_directory": os.path.abspath("./downloads"),
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
     }
     options.add_experimental_option("prefs", prefs)
     
+    # Uncomment baris berikut jika ingin melihat browser
+    # options.add_argument('--headless')
+    
     driver = webdriver.Chrome(options=options)
-    driver.set_window_position(0, 0)
-    driver.maximize_window()  # Maksimalkan jendela untuk konsistensi
     driver.set_page_load_timeout(60)
     return driver
 
 def login(driver, username, password):
-    """Login ke portal Telkom dengan pendekatan yang lebih simple"""
+    """Login ke portal Telkom"""
     print("🔐 Mencoba login ke portal Telkom...")
+    
     try:
         # Buka halaman login
         driver.get("https://newgobeyond.mytens.co.id/login")
-        time.sleep(3)
+        time.sleep(3)  # Tunggu halaman dimuat
         
-        # Isi username
-        username_field = driver.find_element(By.CSS_SELECTOR, "input[type='text'], input[type='email']")
-        username_field.clear()
-        username_field.send_keys(username)
-        print("✅ Username diisi")
+        # Periksa apakah halaman login sudah terbuka
+        if "login" not in driver.current_url.lower():
+            print("⚠️ Tidak diarahkan ke halaman login")
+            return False
         
-        # Isi password
-        password_field = driver.find_element(By.CSS_SELECTOR, "input[type='password']")
-        password_field.clear()
-        password_field.send_keys(password)
-        print("✅ Password diisi")
+        # Tangkap screenshot halaman login
+        driver.save_screenshot("login_page.png")
+        print("📷 Screenshot halaman login disimpan")
         
-        # Tangani checkbox jika ada
-        checkboxes = driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
-        if checkboxes:
-            driver.execute_script("arguments[0].click();", checkboxes[0])
-            print("✅ Checkbox diklik")
+        # Cari dan isi field username/email
+        try:
+            username_field = WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='text'], input[type='email'], input[name='username'], input[name='email']"))
+            ) # EDIT BY BT
+            username_field.clear()
+            username_field.send_keys(username)
+            print("✅ Mengisi username")
+        except Exception as e:
+            print(f"❌ Error saat mengisi username: {str(e)}")
+            return False
+        
+        # Cari dan isi field password
+        try:
+            password_field = WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='password']"))
+            ) # EDIT BY BT
+            password_field.clear()
+            password_field.send_keys(password)
+            print("✅ Mengisi password")
+        except Exception as e:
+            print(f"❌ Error saat mengisi password: {str(e)}")
+            return False
+        
+        # Cari dan klik checkbox Syarat dan Ketentuan & Kebijakan Privasi
+        try:
+            checkbox_selectors = [
+                "//input[@type='checkbox']",
+                "//label[contains(text(), 'Syarat dan Ketentuan') or contains(text(), 'Kebijakan Privasi')]//preceding::input[@type='checkbox'][1]",
+                "//label[contains(., 'Syarat dan Ketentuan') or contains(., 'Kebijakan Privasi')]//input[@type='checkbox']",
+                "//div[contains(@class, 'checkbox') or contains(@class, 'form-check')]//input",
+                "//span[contains(text(), 'Saya menyetujui')]/preceding::input[@type='checkbox'][1]",
+                "//span[contains(text(), 'Saya menyetujui')]/parent::*/preceding::input[@type='checkbox'][1]"
+            ]
+            
+            checkbox_found = False
+            for selector in checkbox_selectors:
+                checkboxes = driver.find_elements(By.XPATH, selector)
+                if checkboxes:
+                    for checkbox in checkboxes:
+                        try:
+                            if not checkbox.is_selected():
+                                checkbox.click()
+                                checkbox_found = True
+                                print("✅ Klik checkbox Syarat dan Ketentuan & Kebijakan Privasi")
+                                break
+                        except:
+                            try:
+                                driver.execute_script("arguments[0].click();", checkbox)
+                                checkbox_found = True
+                                print("✅ Klik checkbox dengan JavaScript")
+                                break
+                            except:
+                                continue
+                if checkbox_found:
+                    break
+            
+            if not checkbox_found:
+                label_selectors = [
+                    "//label[contains(text(), 'Syarat dan Ketentuan') or contains(text(), 'Kebijakan Privasi')]",
+                    "//span[contains(text(), 'Saya menyetujui')]",
+                    "//div[contains(text(), 'Saya menyetujui')]",
+                    "//p[contains(text(), 'Saya menyetujui')]"
+                ]
+                
+                for selector in label_selectors:
+                    labels = driver.find_elements(By.XPATH, selector)
+                    if labels:
+                        for label in labels:
+                            try:
+                                label.click()
+                                checkbox_found = True
+                                print("✅ Klik label Syarat dan Ketentuan & Kebijakan Privasi")
+                                break
+                            except:
+                                try:
+                                    driver.execute_script("arguments[0].click();", label)
+                                    checkbox_found = True
+                                    print("✅ Klik label dengan JavaScript")
+                                    break
+                                except:
+                                    continue
+                    if checkbox_found:
+                        break
+            
+            if not checkbox_found:
+                print("⚠️ Tidak dapat menemukan atau klik checkbox Syarat dan Ketentuan")
+        except Exception as e:
+            print(f"⚠️ Error saat mencoba klik checkbox: {str(e)}")
         
         # Klik tombol login
-        login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-        driver.execute_script("arguments[0].click();", login_button)
-        print("✅ Tombol login diklik")
+        time.sleep(10) # EDIT BY BT
+        login_buttons = driver.find_elements(By.XPATH, 
+            "//button[contains(text(), 'Login') or contains(text(), 'Sign in') or contains(text(), 'Masuk')]")
         
-        # Tunggu login selesai
+        if not login_buttons:
+            login_buttons = driver.find_elements(By.CSS_SELECTOR, 
+                "button[type='submit'], input[type='submit']")
+        
+        if login_buttons:
+            login_buttons[0].click()
+            print("✅ Klik tombol login")
+        else:
+            print("❌ Tidak dapat menemukan tombol login")
+            return False
+        
+        # Tunggu proses login selesai
+        time.sleep(20) # EDIT BY BT
+        
+        # Periksa apakah login berhasil
+        if "login" in driver.current_url.lower():
+            print("❌ Login gagal - masih di halaman login")
+            driver.save_screenshot("login_failed.png")
+            return False
+        
+        print("✅ Login berhasil")
+        driver.save_screenshot("after_login.png")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error saat login: {str(e)}")
+        driver.save_screenshot("login_error.png")
+        return False
+
+def navigate_to_dashboard(driver):
+    print("🔄 Navigasi ke halaman dashboard Rising Star...")
+    
+    try:
+        driver.get("https://newgobeyond.mytens.co.id/dashboard-rising-star?tab=bintang-1")
         time.sleep(5)
+        driver.save_screenshot("dashboard_page.png")
         
-        if "login" not in driver.current_url.lower():
-            print("✅ Login berhasil")
-            driver.save_screenshot("after_login.png")
+        if "dashboard-rising-star" in driver.current_url.lower():
+            print("✅ Berhasil navigasi ke halaman dashboard")
             return True
         else:
-            print("❌ Login gagal - masih di halaman login")
+            print("❌ Gagal navigasi ke halaman dashboard")
             return False
             
     except Exception as e:
-        print(f"❌ Error saat login: {str(e)}")
+        print(f"❌ Error saat navigasi: {str(e)}")
         return False
 
-def wait_for_download_complete(download_dir, timeout=30):
-    """Tunggu file download selesai"""
-    start_time = time.time()
-    
-    # Dapatkan daftar file CSV yang sudah ada
-    initial_files = set([f for f in os.listdir(download_dir) if f.endswith(".csv")])
-    print(f"File CSV awal: {initial_files}")
-    
-    # Polling untuk file baru
-    while time.time() - start_time < timeout:
-        time.sleep(1)
-        current_files = set([f for f in os.listdir(download_dir) if f.endswith(".csv")])
-        new_files = current_files - initial_files
-        
-        # Cek file download yang sedang berjalan
-        downloading_files = [f for f in os.listdir(download_dir) if f.endswith((".crdownload", ".part", ".download"))]
-        
-        if new_files and not downloading_files:
-            print(f"✅ Download selesai. File baru: {new_files}")
-            return list(new_files)
-            
-        elapsed = time.time() - start_time
-        if int(elapsed) % 5 == 0 and int(elapsed) > 0:
-            print(f"⏳ Menunggu download selesai... ({int(elapsed)}/{timeout} detik)")
-    
-    print(f"⚠️ Timeout setelah {timeout} detik. Tidak ada file baru yang terdeteksi.")
-    return []
+def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
+    print(f"🔄 Melakukan load list tabel...")
 
-def download_with_pyautogui(driver, table_names):
-    """Download tabel menggunakan PyAutoGUI untuk mengklik menu dan tombol berdasarkan koordinat"""
-    print("\n🔄 Mencoba download tabel menggunakan PyAutoGUI...")
-    
-    # Navigasi ke dashboard
-    driver.get("https://newgobeyond.mytens.co.id/dashboard-rising-star?tab=bintang-1")
-    print("⏳ Menunggu dashboard dimuat...")
-    time.sleep(10)
-    
-    # Coba klik tombol Bintang 1 jika perlu
+    # Switch ke iframe section
+    iframe = driver.find_element(By.CSS_SELECTOR, "iframe")
+    driver.switch_to.frame(iframe)
+
+    # Add action 
+    actions = ActionChains(driver)
+    successful_download_count = 0
+
     try:
-        bintang_buttons = driver.find_elements(By.XPATH, "//a[contains(text(), 'Bintang 1')]")
-        if bintang_buttons:
-            for btn in bintang_buttons:
-                if btn.is_displayed():
-                    driver.execute_script("arguments[0].click();", btn)
-                    print("✅ Tombol Bintang 1 diklik")
-                    time.sleep(5)
-                    break
-    except:
-        print("⚠️ Tidak perlu klik tombol Bintang 1 atau gagal")
-    
-    # Ambil screenshot untuk referensi
-    driver.save_screenshot("dashboard_for_pyautogui.png")
-    
-    # Maksimalkan jendela untuk konsistensi
-    driver.maximize_window()
-    time.sleep(1)
-    
-    successful_downloads = 0
-    download_dir = os.path.abspath("./downloads")
-    
-    # Definisikan koordinat menu kebab untuk setiap tabel
-    # Koordinat ini mungkin perlu disesuaikan berdasarkan resolusi layar
-    kebab_coordinates = [
-        {"name": "Witel Performance", "x": 1798, "y": 540},  # Koordinat untuk menu kebab Witel Performance
-        {"name": "HOTD Performance", "x": 1798, "y": 660},   # Koordinat untuk menu kebab HOTD Performance
-        {"name": "AM Performance", "x": 1798, "y": 920}     # Koordinat untuk menu kebab AM Performance
-    ]
-    
-    # Koordinat untuk tombol Download dan CSV
-    download_offset_y = 35  # Jarak vertikal dari kebab ke tombol Download
-    csv_offset_y = 35       # Jarak vertikal dari tombol Download ke tombol CSV
-    
-    for kebab in kebab_coordinates:
-        try:
-            table_name = kebab["name"]
-            print(f"\n🔄 Mencoba download {table_name} dengan PyAutoGUI...")
-            
-            # Scroll ke tempat yang sesuai berdasarkan table name
-            scroll_script = f"document.querySelector(\"div[contains(text(), '{table_name}')]\").scrollIntoView({{block: 'center'}});"
+        # Temukan semua tabel
+        link_items = [
+            (link, link.text.strip())
+            for link in driver.find_elements(By.XPATH, "//div[@class='header-title']//a")
+            if link.text.strip()
+        ]
+        print(f"🔍 Ditemukan {len(link_items)} tabel")
+        print(f"✅ List tabel telah ditemukan")
+        print(f"🔄 Melakukan scrolling ke masing-masing tabel...")
+
+        # Loop untuk scroll ke masing-masing parent div dari <a>
+        for link, name in link_items:
             try:
-                driver.execute_script(scroll_script)
-                print(f"✅ Scrolled ke {table_name}")
-            except:
-                # Jika gagal, coba scroll berdasarkan koordinat Y
-                scroll_y = kebab["y"] - 200  # Scroll sedikit di atas kebab button
-                driver.execute_script(f"window.scrollTo(0, {scroll_y});")
-                print(f"✅ Scrolled ke posisi Y: {scroll_y}")
-            
-            time.sleep(2)
-            driver.save_screenshot(f"before_kebab_{table_name.replace(' ', '_')}.png")
-            
-            # Ambil jumlah file CSV sebelum download
-            files_before = set([f for f in os.listdir(download_dir) if f.endswith('.csv')])
-            
-            # Klik menu kebab
-            pyautogui.click(kebab["x"], kebab["y"])
-            print(f"✅ Kebab menu untuk {table_name} diklik pada koordinat ({kebab['x']}, {kebab['y']})")
-            time.sleep(2)
-            
-            # Klik tombol Download
-            download_y = kebab["y"] + download_offset_y
-            pyautogui.click(kebab["x"], download_y)
-            print(f"✅ Tombol Download diklik pada koordinat ({kebab['x']}, {download_y})")
-            time.sleep(2)
-            
-            # Klik tombol Export to CSV
-            csv_y = download_y + csv_offset_y - 10
-            pyautogui.click(kebab["x"] - 140 , csv_y)  # +50 horizontal offset untuk submenu
-            print(f"✅ Tombol Export to CSV diklik pada koordinat ({kebab['x'] -140 }, {csv_y})")
-            
-            # Tunggu download selesai
-            time.sleep(5)  # Tunggu dialog download muncul
-            
-            # Cek apakah ada file baru yang telah diunduh
-            files_after = set([f for f in os.listdir(download_dir) if f.endswith('.csv')])
-            new_files = files_after - files_before
-            
-            if new_files:
-                latest_file = list(new_files)[0]
-                # Rename file
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                new_name = f"{table_name.replace(' ', '_').lower()}_{timestamp}.csv"
-                old_path = os.path.join(download_dir, latest_file)
-                new_path = os.path.join(download_dir, new_name)
-                
-                try:
-                    os.rename(old_path, new_path)
-                    print(f"✅ File diubah nama: {latest_file} -> {new_name}")
-                except:
-                    print(f"⚠️ Tidak dapat mengubah nama file: {latest_file}")
-                
-                successful_downloads += 1
-                print(f"✅ Download {table_name} berhasil")
-            else:
-                print(f"⚠️ Tidak terdeteksi file baru untuk {table_name}")
-            
-        except Exception as e:
-            print(f"❌ Error saat mencoba download {table_name}: {str(e)}")
-            driver.save_screenshot(f"error_{table_name.replace(' ', '_')}.png")
-    
-    return successful_downloads
+                # Naik ke parent div terdekat (bisa diatur lebih tinggi jika perlu)
+                container_div = link.find_element(By.XPATH, "./ancestor::div[9]")
 
-def try_click_with_javascript(driver):
-    """Coba klik tombol dengan JavaScript untuk mengatasi masalah deteksi elemen"""
-    print("\n🔄 Mencoba klik dengan JavaScript...")
+                # Scroll ke container div
+                driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", container_div)
     
-    # Navigasi ke dashboard
-    driver.get("https://newgobeyond.mytens.co.id/dashboard-rising-star?tab=bintang-1")
-    print("⏳ Menunggu dashboard dimuat...")
-    time.sleep(10)
-    
-    # Screenshot awal
-    driver.save_screenshot("before_js_click.png")
-    
-    successful_downloads = 0
-    download_dir = os.path.abspath("./downloads")
-    
-    # JavaScript untuk menemukan dan mengklik semua tombol kebab
-    find_and_click_kebab_script = """
-    // Fungsi untuk menemukan dan mengklik elemen kebab
-    function findAndClickKebabMenus() {
-        // Cari semua kemungkinan menu tombol tiga titik/kebab
-        var kebabButtons = document.querySelectorAll('.ant-dropdown-trigger, [id*="controls"]');
-        console.log('Found ' + kebabButtons.length + ' potential kebab menus');
-        
-        var clickedButtons = 0;
-        for (var i = 0; i < kebabButtons.length; i++) {
-            if (kebabButtons[i].offsetParent !== null) {  // Check if element is visible
-                kebabButtons[i].scrollIntoView({block: 'center'});
-                kebabButtons[i].click();
-                console.log('Clicked kebab menu #' + (i+1));
-                clickedButtons++;
-            }
-        }
-        return clickedButtons;
-    }
-    
-    return findAndClickKebabMenus();
-    """
-    
-    try:
-        clicked_kebabs = driver.execute_script(find_and_click_kebab_script)
-        print(f"✅ JavaScript mengklik {clicked_kebabs} tombol kebab potensial")
-        
-        if clicked_kebabs > 0:
-            time.sleep(2)
-            driver.save_screenshot("after_js_kebab_click.png")
-            
-            # Coba klik tombol Download jika muncul
-            download_script = """
-            var downloadItems = document.querySelectorAll('[class*="dropdown-menu"] div:not([style*="display: none"]):not([style*="visibility: hidden"]):not([class*="hidden"])');
-            var clickedDownload = 0;
-            
-            for (var i = 0; i < downloadItems.length; i++) {
-                if (downloadItems[i].innerText && downloadItems[i].innerText.includes('Download')) {
-                    downloadItems[i].click();
-                    console.log('Clicked Download option');
-                    clickedDownload++;
-                }
-            }
-            
-            return clickedDownload;
-            """
-            
-            clicked_downloads = driver.execute_script(download_script)
-            print(f"✅ JavaScript mengklik {clicked_downloads} tombol Download")
-            
-            if clicked_downloads > 0:
-                time.sleep(2)
-                driver.save_screenshot("after_js_download_click.png")
+                print(f"✅ Scrolled ke tabel: {name}")
+                time.sleep(time_sleep01)
+
+                # Mencari dan klik kebab menu (ant-dropdown-trigger)
+                trigger = container_div.find_element(By.CLASS_NAME, "ant-dropdown-trigger")
+                actions.move_to_element(trigger).click().perform()
+                print(f"☰ Klik kebab menu: {name}")
+                time.sleep(time_sleep01)
                 
-                # Coba klik tombol CSV jika muncul
-                csv_script = """
-                var csvItems = document.querySelectorAll('[class*="dropdown-menu"] div:not([style*="display: none"]):not([style*="visibility: hidden"]):not([class*="hidden"])');
-                var clickedCSV = 0;
-                
-                for (var i = 0; i < csvItems.length; i++) {
-                    if (csvItems[i].innerText && (csvItems[i].innerText.includes('CSV') || csvItems[i].innerText.includes('.CSV'))) {
-                        csvItems[i].click();
-                        console.log('Clicked CSV option');
-                        clickedCSV++;
-                    }
-                }
-                
-                return clickedCSV;
-                """
-                
-                clicked_csvs = driver.execute_script(csv_script)
-                print(f"✅ JavaScript mengklik {clicked_csvs} tombol CSV")
-                
-                if clicked_csvs > 0:
-                    # Tunggu download
-                    time.sleep(5)
+
+                try:
+                    # Mengambil semua menu ant-dropdown-menu, pilih yang paling akhir (yang baru)
+                    download_menus = WebDriverWait(driver, time_sleep02).until(
+                        EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".ant-dropdown-menu"))
+                    )
+
+                    latest_download = download_menus[-1]
+
+                    # Mencari item "Download" di dalam menu terbaru
+                    download_item = latest_download.find_element(By.XPATH, ".//li[contains(., 'Download')]")
+
+                    # Hover ke item "Download"
+                    actions.move_to_element(download_item).perform()
+                    print("✅ Hover ke Download berhasil")
+
+                    time.sleep(time_sleep02)
+
+                    # Ambil semua menu lagi, cari yang terbaru (submenu muncul belakangan)
+                    menus = driver.find_elements(By.CSS_SELECTOR, ".ant-dropdown-menu")
+                    latest_submenu = menus[-1]
+
+                    # Klik export
+                    export_item = latest_submenu.find_element(By.XPATH, ".//li[contains(., 'Export to .CSV')]")
+    
+                    driver.execute_script("arguments[0].click();", export_item)
+                    time.sleep(0.5)
+
+                    print("📥 Klik Export berhasil")
+                    time.sleep(10)
+
+                    successful_download_count += 1
                     
-                    # Cek apakah ada file baru
-                    files = [f for f in os.listdir(download_dir) if f.endswith('.csv')]
-                    successful_downloads = len(files)
+
+                except Exception as e:
+                    print("❌ Proses ekstraksi data gagal")
+                
+            except Exception as e:
+                print(f"⚠️ Gagal scroll ke tabel: {name} | Error: {e}")
+
+        return successful_download_count
+
     except Exception as e:
-        print(f"❌ Error saat mencoba klik dengan JavaScript: {str(e)}")
-    
-    return successful_downloads
+        print(f"⚠️ Error tabel tidak ditemukan {name}: {str(e)}")
+
 
 def main():
-    """Fungsi utama dengan pendekatan PyAutoGUI"""
+    """Improved main function with direct flow from login to extraction without reloading dashboard"""
     driver = None
     
     try:
-        # Setup driver
         driver = setup_driver()
+        username = "isi_dengan_username_anda"  
+        password = "isi_dengan_password_anda"  
         
-        # Login
-        username = "960104"
-        password = "Tbpe1025"
-        
+        # 1. Login
         if not login(driver, username, password):
-            print("❌ Login gagal, menghentikan proses")
+            print("❌ Login gagal pada percobaan awal")
             return
         
-        # Coba pendekatan dengan PyAutoGUI
-        successful_downloads1 = download_with_pyautogui(driver, ["Witel Performance", "HOTD Performance", "AM Performance"])
+        # 2. Navigasi ke dashboard hanya sekali
+        if not navigate_to_dashboard(driver):
+            print("❌ Gagal navigasi ke dashboard")
+            return
         
-        # Jika pendekatan PyAutoGUI gagal, coba dengan JavaScript
-        if successful_downloads1 < 3:
-            successful_downloads2 = try_click_with_javascript(driver)
-        else:
-            successful_downloads2 = 0
+        print("⏳ Menunggu halaman dashboard dimuat sepenuhnya (20 detik)...")
+        time.sleep(20) # EDIT BY BT
         
-        # Hitung total
-        total_successful = successful_downloads1 + successful_downloads2
-        
-        # Tampilkan hasil
+        # Persiapkan direktori download
         download_dir = os.path.abspath("./downloads")
+        os.makedirs(download_dir, exist_ok=True)
+        
+        # 3. Langsung lakukan ekstraksi dan download tanpa navigasi ulang ke dashboard
+        print("🔄 Memulai proses ekstraksi data...")
+
+        successful_download_count = scroll_and_download(driver)
+
         csv_files = [f for f in os.listdir(download_dir) if f.endswith('.csv')]
         
         print("\n===== HASIL PENGAMBILAN DATA =====")
-        print(f"✅ Berhasil mengambil data dari {total_successful}/3 tabel")
         print(f"📊 Total file CSV: {len(csv_files)}")
-        
-        for file in csv_files:
-            file_path = os.path.join(download_dir, file)
-            file_size = os.path.getsize(file_path) / 1024  # KB
-            print(f"  - {file} ({file_size:.2f} KB)")
-        
-        print("==================================")
+        print(f"📊 Total CSV yang baru saja terdownload: {successful_download_count}")
         
     except Exception as e:
         print(f"❌ Error dalam fungsi main: {str(e)}")
-        print(traceback.format_exc())
         if driver:
             driver.save_screenshot("main_error.png")
     finally:
