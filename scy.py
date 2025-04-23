@@ -202,8 +202,14 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
     print(f"🔄 Melakukan load list tabel...")
 
     # Switch ke iframe section
-    iframe = driver.find_element(By.CSS_SELECTOR, "iframe")
-    driver.switch_to.frame(iframe)
+    try:
+        iframe = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "iframe"))
+        )
+        driver.switch_to.frame(iframe)
+    except Exception as e:
+        print(f"❌ Error saat mencari iframe: {str(e)}")
+        return 0
 
     # Add action 
     actions = ActionChains(driver)
@@ -238,7 +244,6 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
                 print(f"☰ Klik kebab menu: {name}")
                 time.sleep(time_sleep01)
                 
-
                 try:
                     # Mengambil semua menu ant-dropdown-menu, pilih yang paling akhir (yang baru)
                     download_menus = WebDriverWait(driver, time_sleep02).until(
@@ -271,18 +276,86 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
 
                     successful_download_count += 1
                     
-
                 except Exception as e:
-                    print("❌ Proses ekstraksi data gagal")
+                    print(f"❌ Proses ekstraksi data gagal: {str(e)}")
                 
             except Exception as e:
                 print(f"⚠️ Gagal scroll ke tabel: {name} | Error: {e}")
-
+        
+        # Switch back to default content
+        driver.switch_to.default_content()
         return successful_download_count
 
     except Exception as e:
-        print(f"⚠️ Error tabel tidak ditemukan {name}: {str(e)}")
+        print(f"⚠️ Error pada proses scroll dan download: {str(e)}")
+        # Switch back to default content
+        driver.switch_to.default_content()
+        return 0
 
+def navigate_to_other_tab(driver):
+    """Navigasi ke semua tab Bintang dan download data dari masing-masing tab"""
+    print("🔄 Mencari dan menavigasi ke semua tab Bintang...")
+    total_downloads = 0
+    
+    try:
+        # Tunggu hingga halaman dimuat sepenuhnya
+        time.sleep(10)
+        
+        # Cari semua tab button yang berisi teks "Bintang"
+        tab_buttons = driver.find_elements(By.XPATH, "//button[div[contains(text(), 'Bintang')]]")
+        
+        if not tab_buttons:
+            print("⚠️ Tidak dapat menemukan tab Bintang. Mencoba selector alternatif...")
+            # Coba selector alternatif untuk menemukan tab
+            tab_buttons = driver.find_elements(By.XPATH, "//button[contains(., 'Bintang')]")
+        
+        if not tab_buttons:
+            print("❌ Tidak dapat menemukan tab Bintang. Coba periksa struktur HTML.")
+            driver.save_screenshot("tab_not_found.png")
+            return 0
+        
+        print(f"🔍 Ditemukan {len(tab_buttons)} tab Bintang")
+        
+        # Loop melalui semua tab Bintang
+        for i, btn in enumerate(tab_buttons):
+            try:
+                # Ambil teks tab
+                text = btn.text.strip()
+                print(f"🌟 Clicking tab: {text}")
+                
+                # Scroll ke element tab untuk memastikan terlihat
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+                time.sleep(2)
+                
+                # Tangkap screenshot sebelum klik
+                driver.save_screenshot(f"before_click_tab_{i+1}.png")
+                
+                # Klik tab
+                driver.execute_script("arguments[0].click();", btn)
+                
+                # Tunggu konten dimuat
+                print(f"⏳ Menunggu konten tab {text} dimuat (20 detik)...")
+                time.sleep(20)
+                
+                # Tangkap screenshot setelah klik
+                driver.save_screenshot(f"after_click_tab_{i+1}.png")
+                
+                # Jalankan fungsi scroll dan download untuk tab ini
+                print(f"🔄 Memulai proses download untuk tab {text}...")
+                downloads = scroll_and_download(driver)
+                total_downloads += downloads
+                
+                print(f"✅ Selesai memproses tab {text}. Berhasil download {downloads} file.")
+                
+            except Exception as e:
+                print(f"❌ Gagal mengklik tab ke-{i+1}: {str(e)}")
+        
+        return total_downloads
+        
+    except Exception as e:
+        print(f"❌ Error saat navigasi ke tab Bintang: {str(e)}")
+        driver.save_screenshot("tab_navigation_error.png")
+        return 0
 
 def main():
     """Improved main function with direct flow from login to extraction without reloading dashboard"""
@@ -290,8 +363,8 @@ def main():
     
     try:
         driver = setup_driver()
-        username = "isi_dengan_username_anda"  
-        password = "isi_dengan_password_anda"  
+        username = "isi_email"  # Ganti dengan email yang sesuai
+        password = "isi_password"  # Ganti dengan password yang sesuai
         
         # 1. Login
         if not login(driver, username, password):
@@ -304,22 +377,21 @@ def main():
             return
         
         print("⏳ Menunggu halaman dashboard dimuat sepenuhnya (20 detik)...")
-        time.sleep(20) # EDIT BY BT
+        time.sleep(20)
         
         # Persiapkan direktori download
         download_dir = os.path.abspath("./downloads")
         os.makedirs(download_dir, exist_ok=True)
         
-        # 3. Langsung lakukan ekstraksi dan download tanpa navigasi ulang ke dashboard
-        print("🔄 Memulai proses ekstraksi data...")
-
-        successful_download_count = scroll_and_download(driver)
-
+        # 3. Navigasi ke semua tab Bintang dan download data
+        print("🔄 Memulai proses navigasi tab dan ekstraksi data...")
+        total_downloads = navigate_to_other_tab(driver)
+        
         csv_files = [f for f in os.listdir(download_dir) if f.endswith('.csv')]
         
         print("\n===== HASIL PENGAMBILAN DATA =====")
         print(f"📊 Total file CSV: {len(csv_files)}")
-        print(f"📊 Total CSV yang baru saja terdownload: {successful_download_count}")
+        print(f"📊 Total CSV yang baru saja terdownload: {total_downloads}")
         
     except Exception as e:
         print(f"❌ Error dalam fungsi main: {str(e)}")
