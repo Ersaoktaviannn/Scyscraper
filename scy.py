@@ -60,7 +60,7 @@ def login(driver, username, password):
         try:
             username_field = WebDriverWait(driver, 20).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='text'], input[type='email'], input[name='username'], input[name='email']"))
-            ) # EDIT BY BT
+            ) 
             username_field.clear()
             username_field.send_keys(username)
             print("✅ Mengisi username")
@@ -72,7 +72,7 @@ def login(driver, username, password):
         try:
             password_field = WebDriverWait(driver, 20).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='password']"))
-            ) # EDIT BY BT
+            ) 
             password_field.clear()
             password_field.send_keys(password)
             print("✅ Mengisi password")
@@ -147,7 +147,7 @@ def login(driver, username, password):
             print(f"⚠️ Error saat mencoba klik checkbox: {str(e)}")
         
         # Klik tombol login
-        time.sleep(10) # EDIT BY BT
+        time.sleep(10) 
         login_buttons = driver.find_elements(By.XPATH, 
             "//button[contains(text(), 'Login') or contains(text(), 'Sign in') or contains(text(), 'Masuk')]")
         
@@ -163,7 +163,7 @@ def login(driver, username, password):
             return False
         
         # Tunggu proses login selesai
-        time.sleep(10) # EDIT BY BT
+        time.sleep(10) 
         
         # Periksa apakah login berhasil
         if "login" in driver.current_url.lower():
@@ -389,8 +389,8 @@ def main():
     
     try:
         driver = setup_driver()
-        username = "960104"
-        password = "Tbpe1026"
+        username = "isi_dengan_username_anda"  # Ganti dengan username Anda
+        password = "isi_dengan_password_anda"  # Ganti dengan password Anda
         
         # Persiapkan direktori download
         download_dir = os.path.abspath("./downloads")
@@ -436,4 +436,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
