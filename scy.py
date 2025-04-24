@@ -11,6 +11,7 @@ import csv
 import os
 import getpass
 import pyautogui
+import shutil
 
 def setup_driver():
     """Setup WebDriver dengan konfigurasi yang tepat"""
@@ -162,7 +163,7 @@ def login(driver, username, password):
             return False
         
         # Tunggu proses login selesai
-        time.sleep(20) # EDIT BY BT
+        time.sleep(10) # EDIT BY BT
         
         # Periksa apakah login berhasil
         if "login" in driver.current_url.lower():
@@ -198,8 +199,19 @@ def navigate_to_dashboard(driver):
         print(f"❌ Error saat navigasi: {str(e)}")
         return False
 
-def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
+def scroll_and_download(driver, current_tab="", time_sleep01=5, time_sleep02=10):
     print(f"🔄 Melakukan load list tabel...")
+    
+    # Ambil nomor bintang dari tab saat ini
+    star_number = ""
+    if current_tab:
+        # Ekstrak angka bintang dari teks tab (misalnya "Bintang 1" -> "1")
+        try:
+            star_number = ''.join(filter(str.isdigit, current_tab))
+            print(f"⭐ Tab saat ini: {current_tab}, Nomor Bintang: {star_number}")
+        except Exception as e:
+            print(f"⚠️ Tidak dapat mengekstrak nomor bintang: {str(e)}")
+            star_number = ""
 
     # Switch ke iframe section
     try:
@@ -214,6 +226,7 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
     # Add action 
     actions = ActionChains(driver)
     successful_download_count = 0
+    download_dir = os.path.abspath("./downloads")
 
     try:
         # Temukan semua tabel
@@ -227,7 +240,7 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
         print(f"🔄 Melakukan scrolling ke masing-masing tabel...")
 
         # Loop untuk scroll ke masing-masing parent div dari <a>
-        for link, name in link_items:
+        for link, table_name in link_items:
             try:
                 # Naik ke parent div terdekat (bisa diatur lebih tinggi jika perlu)
                 container_div = link.find_element(By.XPATH, "./ancestor::div[9]")
@@ -235,13 +248,18 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
                 # Scroll ke container div
                 driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", container_div)
     
-                print(f"✅ Scrolled ke tabel: {name}")
+                print(f"✅ Scrolled ke tabel: {table_name}")
                 time.sleep(time_sleep01)
 
+                # Membuat nama file yang bersih dan format sesuai permintaan
+                clean_table_name = table_name.replace(" ", "_").replace("/", "_").replace("\\", "_").replace(":", "_")
+                custom_filename = f"B{star_number}_{clean_table_name}.csv"
+                target_file_path = os.path.join(download_dir, custom_filename)
+                
                 # Mencari dan klik kebab menu (ant-dropdown-trigger)
                 trigger = container_div.find_element(By.CLASS_NAME, "ant-dropdown-trigger")
                 actions.move_to_element(trigger).click().perform()
-                print(f"☰ Klik kebab menu: {name}")
+                print(f"☰ Klik kebab menu: {table_name}")
                 time.sleep(time_sleep01)
                 
                 try:
@@ -269,18 +287,36 @@ def scroll_and_download(driver, time_sleep01=5, time_sleep02=10):
                     export_item = latest_submenu.find_element(By.XPATH, ".//li[contains(., 'Export to .CSV')]")
     
                     driver.execute_script("arguments[0].click();", export_item)
-                    time.sleep(0.5)
-
                     print("📥 Klik Export berhasil")
+                    
+                    # Tunggu hingga file terdownload
                     time.sleep(10)
-
-                    successful_download_count += 1
+                    
+                    # Cari file yang baru didownload (paling baru berdasarkan waktu pembuatan)
+                    try:
+                        # Cari file CSV yang baru saja diunduh (biasanya dimulai dengan tanggal)
+                        all_files = [f for f in os.listdir(download_dir) if f.endswith('.csv')]
+                        if all_files:
+                            newest_file = max([os.path.join(download_dir, f) for f in all_files], key=os.path.getctime)
+                            
+                            # Rename file ke nama yang diinginkan (overwrite jika sudah ada)
+                            if os.path.exists(target_file_path):
+                                os.remove(target_file_path)
+                                print(f"🔄 Overwrite file yang sudah ada: {custom_filename}")
+                            
+                            shutil.move(newest_file, target_file_path)
+                            print(f"✅ File berhasil diunduh dan disimpan sebagai: {custom_filename}")
+                            successful_download_count += 1
+                        else:
+                            print("⚠️ Tidak ada file CSV ditemukan di direktori download")
+                    except Exception as e:
+                        print(f"❌ Gagal mengganti nama file: {str(e)}")
                     
                 except Exception as e:
                     print(f"❌ Proses ekstraksi data gagal: {str(e)}")
                 
             except Exception as e:
-                print(f"⚠️ Gagal scroll ke tabel: {name} | Error: {e}")
+                print(f"⚠️ Gagal scroll ke tabel: {table_name} | Error: {e}")
         
         # Switch back to default content
         driver.switch_to.default_content()
@@ -304,24 +340,14 @@ def navigate_to_other_tab(driver):
         # Cari semua tab button yang berisi teks "Bintang"
         tab_buttons = driver.find_elements(By.XPATH, "//button[div[contains(text(), 'Bintang')]]")
         
-        if not tab_buttons:
-            print("⚠️ Tidak dapat menemukan tab Bintang. Mencoba selector alternatif...")
-            # Coba selector alternatif untuk menemukan tab
-            tab_buttons = driver.find_elements(By.XPATH, "//button[contains(., 'Bintang')]")
-        
-        if not tab_buttons:
-            print("❌ Tidak dapat menemukan tab Bintang. Coba periksa struktur HTML.")
-            driver.save_screenshot("tab_not_found.png")
-            return 0
-        
         print(f"🔍 Ditemukan {len(tab_buttons)} tab Bintang")
         
         # Loop melalui semua tab Bintang
         for i, btn in enumerate(tab_buttons):
             try:
                 # Ambil teks tab
-                text = btn.text.strip()
-                print(f"🌟 Clicking tab: {text}")
+                tab_text = btn.text.strip()
+                print(f"🌟 Clicking tab: {tab_text}")
                 
                 # Scroll ke element tab untuk memastikan terlihat
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
@@ -334,18 +360,18 @@ def navigate_to_other_tab(driver):
                 driver.execute_script("arguments[0].click();", btn)
                 
                 # Tunggu konten dimuat
-                print(f"⏳ Menunggu konten tab {text} dimuat (20 detik)...")
-                time.sleep(20)
+                print(f"⏳ Menunggu konten tab {tab_text} dimuat (10 detik)...")
+                time.sleep(10)
                 
                 # Tangkap screenshot setelah klik
                 driver.save_screenshot(f"after_click_tab_{i+1}.png")
                 
                 # Jalankan fungsi scroll dan download untuk tab ini
-                print(f"🔄 Memulai proses download untuk tab {text}...")
-                downloads = scroll_and_download(driver)
+                print(f"🔄 Memulai proses download untuk tab {tab_text}...")
+                downloads = scroll_and_download(driver, tab_text)
                 total_downloads += downloads
                 
-                print(f"✅ Selesai memproses tab {text}. Berhasil download {downloads} file.")
+                print(f"✅ Selesai memproses tab {tab_text}. Berhasil download {downloads} file.")
                 
             except Exception as e:
                 print(f"❌ Gagal mengklik tab ke-{i+1}: {str(e)}")
@@ -363,8 +389,12 @@ def main():
     
     try:
         driver = setup_driver()
-        username = "isi_email"  # Ganti dengan email yang sesuai
-        password = "isi_password"  # Ganti dengan password yang sesuai
+        username = "960104"
+        password = "Tbpe1026"
+        
+        # Persiapkan direktori download
+        download_dir = os.path.abspath("./downloads")
+        os.makedirs(download_dir, exist_ok=True)
         
         # 1. Login
         if not login(driver, username, password):
@@ -376,22 +406,24 @@ def main():
             print("❌ Gagal navigasi ke dashboard")
             return
         
-        print("⏳ Menunggu halaman dashboard dimuat sepenuhnya (20 detik)...")
-        time.sleep(20)
-        
-        # Persiapkan direktori download
-        download_dir = os.path.abspath("./downloads")
-        os.makedirs(download_dir, exist_ok=True)
+        print("⏳ Menunggu halaman dashboard dimuat sepenuhnya (10 detik)...")
+        time.sleep(10)
         
         # 3. Navigasi ke semua tab Bintang dan download data
         print("🔄 Memulai proses navigasi tab dan ekstraksi data...")
         total_downloads = navigate_to_other_tab(driver)
         
-        csv_files = [f for f in os.listdir(download_dir) if f.endswith('.csv')]
+        # Dapatkan semua file CSV dengan format B{x}_*
+        csv_files = [f for f in os.listdir(download_dir) if f.endswith('.csv') and f[0] == 'B' and f[1].isdigit()]
         
         print("\n===== HASIL PENGAMBILAN DATA =====")
         print(f"📊 Total file CSV: {len(csv_files)}")
         print(f"📊 Total CSV yang baru saja terdownload: {total_downloads}")
+        
+        # Tampilkan daftar file yang telah diunduh
+        print("\n📋 Daftar file CSV yang diunduh:")
+        for i, file in enumerate(csv_files):
+            print(f"  {i+1}. {file}")
         
     except Exception as e:
         print(f"❌ Error dalam fungsi main: {str(e)}")
@@ -404,3 +436,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
