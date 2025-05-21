@@ -50,6 +50,3 @@ python scraper.py
 
 3. Analisis Log
 telkom_etl.log
-
-
-
