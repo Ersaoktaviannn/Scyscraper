@@ -7,13 +7,13 @@
 [![Issues](https://img.shields.io/github/issues/Ersaoktaviannn/Scyscraper)](https://github.com/Ersaoktaviannn/Scyscraper/issues)
 [![Stars](https://img.shields.io/github/stars/Ersaoktaviannn/Scyscraper?style=social)](https://github.com/Ersaoktaviannn/Scyscraper/stargazers)
 
-Scyscraper adalah proyek otomatisasi ETL berbasis Python yang mengekstraksi data dari portal internal Telkom (GoBeyond), melakukan transformasi data, dan memuatnya ke dalam database PostgreSQL atau SQLite. Proyek ini sepenuhnya dikontrol melalui script Python menggunakan Selenium, pandas, dan SQLAlchemy.
+Scyscraper adalah proyek otomatisasi ETL berbasis Python yang mengekstraksi data dari portal internal Telkom (MyTens GoBeyond), melakukan transformasi data, dan memuatnya ke dalam database PostgreSQL atau SQLite. Proyek ini sepenuhnya dikontrol melalui script Python menggunakan Selenium, pandas, dan SQLAlchemy.
 
 ---
 ## 🔧 Fitur Utama
 
-- ✅ **Login otomatis** ke portal internal Telkom
-- 🔄 **Navigasi dashboard interaktif** dan tab dinamis (Bintang 1–5)
+- ✅ **Login otomatis** ke portal Telkom MyTens GoBeyond
+- 🔄 **Navigasi dashboard** dan tab dinamis (Bintang 1–5)
 - 📥 **Ekstraksi file CSV otomatis** melalui antarmuka web dinamis
 - 🧹 **Transformasi data**: normalisasi nama kolom, pengisian nilai kosong, penambahan metadata
 - 🗃️ **Loading ke database** PostgreSQL / SQLite
@@ -47,4 +47,9 @@ Edit konfigurasi di dalam file scraper.py (bagian CONFIG):
 
 2. Jalankan Program
 python scraper.py
+
+3. Analisis Log
+telkom_etl.log
+
+
 
