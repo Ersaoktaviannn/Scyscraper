@@ -7,7 +7,7 @@
 [![Issues](https://img.shields.io/github/issues/Ersaoktaviannn/Scyscraper)](https://github.com/Ersaoktaviannn/Scyscraper/issues)
 [![Stars](https://img.shields.io/github/stars/Ersaoktaviannn/Scyscraper?style=social)](https://github.com/Ersaoktaviannn/Scyscraper/stargazers)
 
-Scyscraper adalah proyek otomatisasi ETL berbasis Python yang mengekstraksi data dari portal internal Telkom (MyTens GoBeyond), melakukan transformasi data, dan memuatnya ke dalam database PostgreSQL atau SQLite. Proyek ini sepenuhnya dikontrol melalui script Python menggunakan Selenium, pandas, dan SQLAlchemy.
+Scyscraper merupakan implementasi web scraping dan ETL pipeline pada website MyTens GoBeyond menggunakan Selenium, melakukan transformasi data dengan pandas, dan memuat hasil akhir ke dalam database relasional PostgreSQL melalui SQLAlchemy.
 
 ---
 ## 🔧 Fitur Utama
