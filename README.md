@@ -34,7 +34,7 @@ pip install selenium pandas sqlalchemy psycopg2
 
 🚀 Menjalankan Pipeline
 1. Konfigurasi
-Edit konfigurasi di dalam file scraper.py (bagian CONFIG):
+Edit konfigurasi di dalam file scraper.py (isi sesuai dengan masing masing management account):
 
 "username": "isi sesuai kebutuhan",
 "password": "isi sesuai kebutuhan",
