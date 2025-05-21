@@ -321,8 +321,8 @@ def main():
     
     try:
         driver = setup_driver()
-        username = "960104"
-        password = "Tbpe1025"
+        username = "isi sesuai dengan kebutuhan"
+        password = "isi sesuai dengan kebutuhan"
         
         # 1. Login
         if not login(driver, username, password):
