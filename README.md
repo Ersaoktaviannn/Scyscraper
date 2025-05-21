@@ -12,12 +12,12 @@ Scyscraper adalah proyek otomatisasi ETL berbasis Python yang mengekstraksi data
 ---
 ## 🔧 Fitur Utama
 
-- ✅ **Login otomatis** ke portal Telkom MyTens GoBeyond
-- 🔄 **Navigasi dashboard** dan tab dinamis (Bintang 1–5)
-- 📥 **Ekstraksi file CSV otomatis** melalui antarmuka web dinamis
-- 🧹 **Transformasi data**: normalisasi nama kolom, pengisian nilai kosong, penambahan metadata
-- 🗃️ **Loading ke database** PostgreSQL / SQLite
-- 📊 **Laporan hasil ETL** secara otomatis dalam bentuk log dan teks
+-  **Login otomatis** ke portal Telkom MyTens GoBeyond
+-  **Navigasi dashboard** dan tab dinamis (Bintang 1–5)
+-  **Ekstraksi file CSV otomatis** melalui antarmuka web dinamis
+-  **Transformasi data**: normalisasi nama kolom, pengisian nilai kosong, penambahan metadata
+-  **Loading ke database** PostgreSQL / SQLite
+-  **Laporan hasil ETL** secara otomatis dalam bentuk log dan teks
 ---
 
 ## 🛠️ Prasyarat
