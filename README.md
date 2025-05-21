@@ -46,7 +46,7 @@ Edit konfigurasi di dalam file scraper.py (bagian CONFIG):
 ...
 
 2. Jalankan Program
-python scraper.py
+python scy/scraper.py 
 
 3. Analisis Log
 telkom_etl.log
