@@ -7,7 +7,7 @@
 [![Issues](https://img.shields.io/github/issues/Ersaoktaviannn/Scyscraper)](https://github.com/Ersaoktaviannn/Scyscraper/issues)
 [![Stars](https://img.shields.io/github/stars/Ersaoktaviannn/Scyscraper?style=social)](https://github.com/Ersaoktaviannn/Scyscraper/stargazers)
 
-Scyscraper merupakan implementasi web scraping dan ETL pipeline pada website MyTens GoBeyond menggunakan Selenium, melakukan transformasi data dengan pandas, dan memuat hasil akhir ke dalam database relasional PostgreSQL melalui SQLAlchemy.
+Scyscraper merupakan implementasi web scraping dan ETL pipeline pada website MyTens GoBeyond menggunakan Selenium untuk mengekstraksi data, melakukan transformasi data dengan pandas, dan memuat hasil akhir ke dalam database relasional PostgreSQL melalui SQLAlchemy.
 
 ---
 ## 🔧 Fitur Utama
